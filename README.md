@@ -1,5 +1,5 @@
 # Shaders
-Idea general: código que corre en el GPU y puede ajustarse a ciertos inputs, como normal maps y textures.
+General idea: code that runs in the GPU and can adjust to certain inputs from geometry like normals, tangents, textures, uvs, etc.
 
 ## Case study
 ### Fresnel shader
