@@ -1,3 +1,47 @@
+
+# Index
+- [Index](#index)
+- [Shaders](#shaders)
+  - [Case study](#case-study)
+    - [Fresnel shader](#fresnel-shader)
+    - [Return of the Obra Dinn](#return-of-the-obra-dinn)
+    - [Other typical shaders](#other-typical-shaders)
+  - [The structure of a shader (Unity)](#the-structure-of-a-shader-unity)
+    - [.shader](#shader)
+          - [**Properties**](#properties)
+          - [**SubShader**](#subshader)
+  - [A first look at shader code](#a-first-look-at-shader-code)
+      - [Using variables](#using-variables)
+      - [Why do we call "v2f" struct "Interpolators"?](#why-do-we-call-v2f-struct-interpolators)
+      - [Swizzling](#swizzling)
+      - [Why is the shade ""following" the transform of the object the material is applied to?](#why-is-the-shade-following-the-transform-of-the-object-the-material-is-applied-to)
+  - [First shaders](#first-shaders)
+    - ["Hello world"](#hello-world)
+    - [Change color from material](#change-color-from-material)
+  - [Patterns](#patterns)
+    - [Normals](#normals)
+      - [Using normals as colors](#using-normals-as-colors)
+    - [UV coordinates & manipulation](#uv-coordinates--manipulation)
+      - [Gradients](#gradients)
+        - [Change the start and end of the gradient](#change-the-start-and-end-of-the-gradient)
+      - [Triangle wave](#triangle-wave)
+        - [Preprocessor constants](#preprocessor-constants)
+      - [Cosine wave](#cosine-wave)
+    - [Pattern manipulation](#pattern-manipulation)
+  - [Animation](#animation)
+    - [Ring](#ring)
+  - [Blending mode](#blending-mode)
+    - [Theory](#theory)
+      - [Additive](#additive)
+      - [Multiply](#multiply)
+    - [Blending mode code](#blending-mode-code)
+  - [Depth buffer & depth testing (ZTest)](#depth-buffer--depth-testing-ztest)
+    - [Tinkering with the depth buffer](#tinkering-with-the-depth-buffer)
+    - [Back to the ring shader](#back-to-the-ring-shader)
+    - [Back face culling](#back-face-culling)
+    - [Remove top and bottom](#remove-top-and-bottom)
+    - [Give it colors!](#give-it-colors)
+
 # Shaders
 General idea: code that runs in the GPU and can adjust to certain inputs from geometry like normals, tangents, textures, uvs, etc.
 
@@ -380,7 +424,7 @@ We could do this math in the fragment shader, it works exactly the same way. But
 
 If there's a really complex mesh, with a lot of vertices, but rendered very far away, so that it takes up a few pixels, then in this case it might be better to do the math in the fragment shader, but it's a border case.
 
-#### UV coordinates & manipulation
+### UV coordinates & manipulation
 Usually UV coordinates are 2D coordinates, they specify a 2D coordinate on your mesh. These coordinates depend on how the object was UV mapped when the artist created it. If we were to:
 
 ```
@@ -617,7 +661,7 @@ Pass {
 }
 ```
 
-### Depth buffer & depth testing (ZTest)
+## Depth buffer & depth testing (ZTest)
 As soon as we get into things that are transparent, we can into the issues of the depth buffer, or whether or not we should write into the depth buffer.
 
 If we add `Blend One One` (additive blending) to our prior ring shader, and start playing with a sphere, we will see that it kind of works but it has some sorting issues (sometimes the shader completely opaques the sphere).
@@ -626,7 +670,7 @@ The depth buffer is kind of a big screen texture where some shaders write a dept
 
 So we have the camera, and we are writing to the depth buffer with some object. So what this means is that it will basically make the depth buffer to go from the far clip of the camera , to the object which is going to have values very close to the camera because we wrote the depth buffer, and back to the far clip, creating a "cone" behind which nothing is rendered, because we already have something in front of it. So, **we can't do this if we want the object to be transparent; we can't write that object in the depth buffer.** This method works for opaque objects.
 
-#### Tinker with the depth buffer
+### Tinkering with the depth buffer
 Basically two ways:
 
 1. Change the way it reads from the depth buffer.
@@ -641,7 +685,7 @@ Basically two ways:
 
 2. Change the way it write to the depth buffer: `ZWrite Off`
 
-#### Back to the ring shader
+### Back to the ring shader
 So if we `ZWrite Off`, we stop the funky-ness with the z-sorting. But now we have an additional problem, the ring shader is being rendered before the sphere; so the sphere is writing to the depth buffer and just overriting everything we are drawing here.
 
 In **Unity's default rendering pipeline**, basically there's an order in which different types of geometry tends to render.
@@ -662,14 +706,14 @@ Tags {
 
 `Queue` is the one that changes the render order. We want to render all our transparent objects after the **opaque** has rendered, so we need to change it from **Opaque** to **Transparent**, which, as seen earlier, renders afterwards in the pipeline. `RenderType` is mostly for tagging purposes for post processing, it informs the render pipeline what type this is, it doesn't change the sorting.
 
-#### Back face culling
+### Back face culling
 What if we want the ring to be double-sided? We can't see the other side of the ring, albeit it being transparent; when we can't see the other face, the effect is known as **back face culling** and defined as `Cull Back`, which is the default value.
 
 We could set it to `Front`, and it's going to flip; it's not going to render the front side of the triangles, only the back side.
 
 If we want to render both, we say `Cull Off`, so, render both sides of the triangles.
 
-#### Remove top and bottom
+### Remove top and bottom
 We can hack them away:
 
 ```
@@ -684,7 +728,7 @@ float4 frag(Interpolators i) : SV_Target{
 ```
 We are returning 0 when the direction of the normal points almost entirely up or down.
 
-#### Give it colors!
+### Give it colors!
 We can seamlessly reintegrate the colors:
 
 ```
