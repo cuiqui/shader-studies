@@ -46,7 +46,7 @@
 
 # Examples
 ## Cosine wave ring
-https://user-images.githubusercontent.com/13524085/120125533-99d09580-c18f-11eb-801f-cc4a38a14a47.mp4
+![cosine-ring](https://user-images.githubusercontent.com/13524085/120125576-c8e70700-c18f-11eb-9021-eb1291c0665e.gif)
 
 # Shaders
 General idea: code that runs in the GPU and can adjust to certain inputs from geometry like normals, tangents, textures, uvs, etc.
