@@ -96,8 +96,8 @@ Shader "Unlit/shader" {
     }
     SubShader {
         // Defines how the object should render,
-        // sorting, is it opaque, transparent,
-        // change de cue. Render pipeline related.
+        // sorting, if it is opaque, transparent,
+        // change de queue. Render pipeline related.
         Tags { "RenderType"="Opaque" }
         
         // Use different subshaders according to the
