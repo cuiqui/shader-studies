@@ -73,15 +73,15 @@ Colors, values, textures, mesh (matrix4x4, where it is, how it is rotated, how i
 
 ###### **SubShader**
 You can have multiple subshaders for the same shader.
-	
+    
 * **Pass**: proper code in HLSL is here.
-	1. **Vertex shader**: takes all the vertices of your mesh. It's kind of a foreach loop of each vertex do something.In most cases what I want to do is put those vertices in some place in the world. But this shader doesn't want you to put things in *world space*, nor *local space*, nor *view space*, but it wants you to say where those vertex are going to be in **clip space**.
-	
-		Clip space is like a normalized space from `-1` to `1` inside of your render target or current view. The transformation is fairly simple taking the local space coordinates of each vertex and applying the MVP transformation matrix to convert it to clip space. So what the vertex shader does is:
-	    - Set the position of vertices.
-	    - Pass information to the fragment shader.
+    1. **Vertex shader**: takes all the vertices of your mesh. It's kind of a foreach loop of each vertex do something.In most cases what I want to do is put those vertices in some place in the world. But this shader doesn't want you to put things in *world space*, nor *local space*, nor *view space*, but it wants you to say where those vertex are going to be in **clip space**.
+    
+        Clip space is like a normalized space from `-1` to `1` inside of your render target or current view. The transformation is fairly simple taking the local space coordinates of each vertex and applying the MVP transformation matrix to convert it to clip space. So what the vertex shader does is:
+        - Set the position of vertices.
+        - Pass information to the fragment shader.
 
-    	It's normally used to animate water of trees swaying in the wind.
+        It's normally used to animate water of trees swaying in the wind.
     2. **Fragment (pixel) shader**: is a foreach loop of every `Fragment` ("for each pixel inside the geometry that we are now rendering", between the vertex and the fragment shader there's GPU black magic) and basically set the color of each fragment (pixel that we are rendering).
 
 
@@ -91,13 +91,13 @@ To create a shader, right-click in project, create, shader, and let's start with
 ```
 Shader "Unlit/shader" {
     Properties {
-    	// Input data
+        // Input data
         _MainTex ("Texture", 2D) = "white" {}
     }
     SubShader {
-    	// Defines how the object should render,
-    	// sorting, is it opaque, transparent,
-    	// change de cue. Render pipeline related.
+        // Defines how the object should render,
+        // sorting, is it opaque, transparent,
+        // change de cue. Render pipeline related.
         Tags { "RenderType"="Opaque" }
         
         // Use different subshaders according to the
@@ -105,7 +105,7 @@ Shader "Unlit/shader" {
         LOD 100
 
         Pass {
-        	// Beginning of shader code.
+            // Beginning of shader code.
             CGPROGRAM
             
             // Way to tell the compiler which function is
@@ -115,21 +115,21 @@ Shader "Unlit/shader" {
             #pragma vertex vert
             #pragma fragment frag
 
-			// Include Unity lib to do some things more
-			// efficiently, useful to include.
+            // Include Unity lib to do some things more
+            // efficiently, useful to include.
             #include "UnityCG.cginc"
 
-			// Then you can define variables
+            // Then you can define variables
             sampler2D _MainTex;
             float4 _MainTex_ST;
 
-			// This is automatically filled up by Unity.
+            // This is automatically filled up by Unity.
             struct appdata {
-            	// TERRIBLE NAME, usually renames it
-            	// to "MeshData".
-            	// This is the per-vertex mesh data
+                // TERRIBLE NAME, usually renames it
+                // to "MeshData".
+                // This is the per-vertex mesh data
 
-				// Vertex position in local space
+                // Vertex position in local space
                 float4 vertex : POSITION;
 
                 // UV coordinates. Often used for mapping textures
@@ -159,30 +159,30 @@ Shader "Unlit/shader" {
             };
 
             struct v2f {
-            	// The data that gets passed from the vertex shader
-            	// to the fragment shader. Usually renames it to
-            	// Interpolators.
-            	
-            	// Everything that we pass from the vertex shader to
-            	// the fragment shader has to exist insdie this structure.
-            	
-            	// Can be whatever we want it to be. In this case "TEXCOORD0"
-            	// does NOT refer to a uv channel. So if we want to pass
-            	// information, we can create a lot of this and pass
-            	// absolutely anything. The maximum is float4 though for
-            	// each interpolator.
+                // The data that gets passed from the vertex shader
+                // to the fragment shader. Usually renames it to
+                // Interpolators.
+                
+                // Everything that we pass from the vertex shader to
+                // the fragment shader has to exist insdie this structure.
+                
+                // Can be whatever we want it to be. In this case "TEXCOORD0"
+                // does NOT refer to a uv channel. So if we want to pass
+                // information, we can create a lot of this and pass
+                // absolutely anything. The maximum is float4 though for
+                // each interpolator.
                 float2 uv : TEXCOORD0;
 
-				// Clip space position
+                // Clip space position
                 float4 vertex : SV_POSITION;
             };
 
 
-			// See that the signature for the vertex shader returns
-			// a "v2f" struct, or "Interpolator"; and takes as input
-			// the "MeshData" struct.
+            // See that the signature for the vertex shader returns
+            // a "v2f" struct, or "Interpolator"; and takes as input
+            // the "MeshData" struct.
             v2f vert (appdata v) {
-            	// "o" for output.
+                // "o" for output.
                 v2f o;
                 
                 // This function is multiplying by the MVP matrix
@@ -193,17 +193,17 @@ Shader "Unlit/shader" {
                 return o;
             }
 
-			// "float" (32 bit float), anything in world space mostly
-			// or use float always.
-			// "half" (16 bit float), very useful
-			// "fixed" (lower precision ~12bit?), useful in the
-			// -1 to 1 range.
-			// Where there's a fixed4 -> half4 -> float4, so if you wanna
-			// make a matrix: fixed4x4 -> half4x4 -> float4x4 (C#: Matrix4x4)
+            // "float" (32 bit float), anything in world space mostly
+            // or use float always.
+            // "half" (16 bit float), very useful
+            // "fixed" (lower precision ~12bit?), useful in the
+            // -1 to 1 range.
+            // Where there's a fixed4 -> half4 -> float4, so if you wanna
+            // make a matrix: fixed4x4 -> half4x4 -> float4x4 (C#: Matrix4x4)
 
-			// See the signature, takes in an "v2f" or "Interpolator".
-			// The semantic ": SV_Target" is telling the compiler that this
-			// fragment shader should output to the frame buffer.
+            // See the signature, takes in an "v2f" or "Interpolator".
+            // The semantic ": SV_Target" is telling the compiler that this
+            // fragment shader should output to the frame buffer.
             fixed4 frag (v2f i) : SV_Target {
                 return float4(1, 0, 0, 1);  // returns red. "Hello world".
             }
@@ -219,15 +219,15 @@ Let's say we want to display some variable in the UI and use it in our shader co
 ```
 Shader "Unlit/shader" {
     Properties {
-    	// Input data
+        // Input data
         _Value ("Value", Float) = 1.0
     }
     SubShader {
-    	Pass {
-    		CGPROGRAM
-    		float _Value;
-    		ENDCG
-    	}
+        Pass {
+            CGPROGRAM
+            float _Value;
+            ENDCG
+        }
     }
 }
 ```
@@ -243,13 +243,13 @@ Imagine that in your fragment shader you have a color:
 
 ```
 float4 frag(Interpolators i) : SV_Target {
-	float4 myValue;
-	
-	// Then you can
-	float2 otherValue = myValue.rg;  // (red, green)
-	float2 otherValueFlipped = myValue.gr  // (green, red)
-	float2 withOtherAccesors = myValue.xy
-	float4 spreadFirstVal = myValue.xxxx
+    float4 myValue;
+    
+    // Then you can
+    float2 otherValue = myValue.rg;  // (red, green)
+    float2 otherValueFlipped = myValue.gr  // (green, red)
+    float2 withOtherAccesors = myValue.xy
+    float4 spreadFirstVal = myValue.xxxx
 }
 ```
 
@@ -258,9 +258,9 @@ It seems trivial, but it's not, this is because we're telling the shader to conv
 
 ```
 Interpolators vert (MeshData v) {
-	Interpolators o;
-	o.vertex = UnityObjectToClipPos(v.vertex);
-	return o;
+    Interpolators o;
+    o.vertex = UnityObjectToClipPos(v.vertex);
+    return o;
 }
 ```
 This is not always the case. If we just set to `o.vertex = v.vertex` is going to stuck in the camera, rendering it directly into clip space. This would be useful to create **post processing shaders**, since we usually want to cover the entire screen.
@@ -366,8 +366,8 @@ In order to pass something from the vertex shader to the fragment shader, we nee
 
 ```
 struct Interpolators {
-	float4 vertex : SV_POSITION;
-	float3 normal : TEXCOORD0;
+    float4 vertex : SV_POSITION;
+    float3 normal : TEXCOORD0;
 }
 ```
 
@@ -435,7 +435,7 @@ Usually UV coordinates are 2D coordinates, they specify a 2D coordinate on your 
 
 ```
 float4 frag (Interpolators i) : SV_Target {
-	return float4 (i.uv.xxx, 1);
+    return float4 (i.uv.xxx, 1);
 }
 ```
 We would see a horizontal gradient of black and white. , while `i.uv.yyy` would be vertical. With `i.uv, 0, 1` we would have red and green being added together, red growing in the x-axis and green in the y-axis.
@@ -513,14 +513,14 @@ Let's look at what would happen if we do
 
 ```
 float4 frag(Interpolators i) : SV_Target {
-	return frac(i.uv.x * 5);
+    return frac(i.uv.x * 5);
 }
 ```
 We would get 5 repeating patterns from 0 to 1: [[0..1], [0..1], [0..1], [0..1], [0..1]]; so the final pattern would be from black to white and then an abrupt fall to black again. Now let's do a triangle wave:
 
 ```
 float4 frag(Interpolators i) : SV_Target {
-	return abs(frac(i.uv.x * 5) * 2 - 1);
+    return abs(frac(i.uv.x * 5) * 2 - 1);
 }
 ```
 We would have 5 stripes that go from 1 to 0 in the middle, and then to 1 again; so there'll be no abrupt falls between series.
@@ -681,13 +681,13 @@ Basically two ways:
 
 1. Change the way it reads from the depth buffer.
 
-	If we move the sphere across the ring, we will see that (supposing `ZWrite Off`) the pixels of the ring that are opaqued by the sphere are not rendering. That's because we are still reading from the depth buffer, but perhaps we don't want that. For that, we have `ZTest` for how the testing should work out when presented with a depth buffer with some value.
-	
-	The default value is called `ZTest LEqual` which means that "if the depth of this objects is less than or equal to the depth already written into the depth buffer, show it, otherwise don't".
-	
-	If we want it to always draw, we can set it to `Always`, so now even if the ring is behind the sphere it's still going to draw.
-	
-	We can also set it to `GEqual`, so it's going to draw if it is behind something, and not going to draw if it is in font.
+    If we move the sphere across the ring, we will see that (supposing `ZWrite Off`) the pixels of the ring that are opaqued by the sphere are not rendering. That's because we are still reading from the depth buffer, but perhaps we don't want that. For that, we have `ZTest` for how the testing should work out when presented with a depth buffer with some value.
+    
+    The default value is called `ZTest LEqual` which means that "if the depth of this objects is less than or equal to the depth already written into the depth buffer, show it, otherwise don't".
+    
+    If we want it to always draw, we can set it to `Always`, so now even if the ring is behind the sphere it's still going to draw.
+    
+    We can also set it to `GEqual`, so it's going to draw if it is behind something, and not going to draw if it is in font.
 
 2. Change the way it write to the depth buffer: `ZWrite Off`
 
