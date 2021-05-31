@@ -1,6 +1,8 @@
 
 # Index
 - [Index](#index)
+- [Examples](#examples)
+  - [Cosine wave ring](#cosine-wave-ring)
 - [Shaders](#shaders)
   - [Case study](#case-study)
     - [Fresnel shader](#fresnel-shader)
@@ -41,6 +43,10 @@
     - [Back face culling](#back-face-culling)
     - [Remove top and bottom](#remove-top-and-bottom)
     - [Give it colors!](#give-it-colors)
+
+# Examples
+## Cosine wave ring
+https://user-images.githubusercontent.com/13524085/120125533-99d09580-c18f-11eb-801f-cc4a38a14a47.mp4
 
 # Shaders
 General idea: code that runs in the GPU and can adjust to certain inputs from geometry like normals, tangents, textures, uvs, etc.
