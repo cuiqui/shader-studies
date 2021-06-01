@@ -17,9 +17,9 @@
       - [Why do we call "v2f" struct "Interpolators"?](#why-do-we-call-v2f-struct-interpolators)
       - [Swizzling](#swizzling)
       - [Why is the shade ""following" the transform of the object the material is applied to?](#why-is-the-shade-following-the-transform-of-the-object-the-material-is-applied-to)
-  - [First shaders](#first-shaders)
-    - ["Hello world"](#hello-world)
-    - [Change color from material](#change-color-from-material)
+- [Fragment shader](#fragment-shader)
+  - ["Hello world"](#hello-world)
+  - [Change color from material](#change-color-from-material)
   - [Patterns](#patterns)
     - [Normals](#normals)
       - [Using normals as colors](#using-normals-as-colors)
@@ -43,6 +43,11 @@
     - [Back face culling](#back-face-culling)
     - [Remove top and bottom](#remove-top-and-bottom)
     - [Give it colors!](#give-it-colors)
+    - [Radial patterns](#radial-patterns)
+- [Vertex shader](#vertex-shader)
+  - [Foundations of a water shader](#foundations-of-a-water-shader)
+  - [Ripples (radial waves)](#ripples-radial-waves)
+- [Textures](#textures)
 
 # Examples
 ## Cosine wave ring
@@ -266,9 +271,9 @@ Interpolators vert (MeshData v) {
 This is not always the case. If we just set to `o.vertex = v.vertex` is going to stuck in the camera, rendering it directly into clip space. This would be useful to create **post processing shaders**, since we usually want to cover the entire screen.
 
 
-## First shaders
+# Fragment shader
 
-### "Hello world"
+## "Hello world"
 Let's make a shader that all it does it position vertices at some position in the world, in this case corresponding to a transform attached to a sphere; this will be handled by the vertex shader. Then, paint everything a hardcoded color in the fragment shader.
 
 ```
@@ -305,7 +310,7 @@ float4 frag(Interpolators i) : SV_Target
 ENDCG
 ```
 
-### Change color from material
+## Change color from material
 Let's say we want to change the color that's being outputted by the fragment shader, and have different materials for different colors; then we can:
 
 ```
@@ -753,3 +758,85 @@ float4 frag(Interpolators i) : SV_Target{
 }
 ```
 As `_ColorB` we should have black since additive with black is the same as nothing, which gives us a fade effect.
+
+### Radial patterns
+Until now we've been doing linear patterns, for a radial pattern we can use the distance from the center while transforming the (0, 0) of the uvs.
+
+```
+float4 frag(Interpolators i) : SV_Target{
+    float2 uvsCentered = i.uv * 2 - 1;
+    float radialDistance = length(uvsCentered);
+
+    return float4(radialDistance.xxx, 1);
+}
+```
+
+And if we incorporate the waves to it, we would have a trippy effect.
+
+```
+float4 frag(Interpolators i) : SV_Target{
+    float2 uvsCentered = i.uv * 2 - 1;
+    float radialDistance = length(uvsCentered);
+
+    float wave = cos((radialDistance - _Time.y * 0.1) * TAU * _Repeat) * 0.5 + 0.5;
+    return wave;
+}
+```
+
+And perhaps make it fade-out towards the edges adding: `wave *= 1 - radialDistance;`.
+
+
+# Vertex shader
+The achieved effect would greatly depend on the geomtry used. For example a standard Unity plane won't reflect the intuitions for the following shaders; a **tessellated plane** (with a LOT of geometry, i.e., vertices) will.
+
+## Foundations of a water shader
+
+We can take the cosine function with our color waves from the fragment shader and use it to offset the y position of the vertices in the vertex shader.
+
+```
+Interpolators vert(MeshData v) {
+    Interpolators o;
+
+    float wave = cos((v.uv0.y - _Time.y * 0.1) * TAU * _Repeat);
+
+    v.vertex.y = wave * _WaveAmp;
+    o.vertex = UnityObjectToClipPos(v.vertex);
+    o.normal = UnityObjectToWorldNormal(v.normals);  // matrix multiplication
+    o.uv = v.uv0;
+
+    return o;
+}
+```
+
+We created a variable `_WaveAmp` to control the wave amplitude.
+
+## Ripples (radial waves)
+We can extract the wave calculation from the prior fragment shader and use it to calculate the displacement of the y-axis for each vertex.
+
+```
+float GetWave(float2 uv) {
+    float2 uvsCentered = uv * 2 - 1;
+    float radialDistance = length(uvsCentered);
+
+    float wave = cos((radialDistance - _Time.y * 0.1) * TAU * _Repeat) * 0.5 + 0.5;
+    wave *= 1 - radialDistance;
+    return wave;
+}
+
+Interpolators vert(MeshData v) {
+    Interpolators o;
+
+    float waveY = cos((v.uv0.y - _Time.y * 0.1) * TAU * _Repeat);
+    float waveX = cos((v.uv0.x - _Time.y * 0.1) * TAU * _Repeat);
+
+    v.vertex.y = GetWave(v.uv0) * _WaveAmp;  // Important line
+
+    o.vertex = UnityObjectToClipPos(v.vertex);
+    o.normal = UnityObjectToWorldNormal(v.normals);  // matrix multiplication
+    o.uv = v.uv0;
+
+    return o;
+}
+```
+
+# Textures
