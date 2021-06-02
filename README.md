@@ -3,6 +3,7 @@
 - [Index](#index)
 - [Examples](#examples)
   - [Cosine wave ring](#cosine-wave-ring)
+  - [Radial waves (naive water shader)](#radial-waves)
 - [Shaders](#shaders)
   - [Case study](#case-study)
     - [Fresnel shader](#fresnel-shader)
@@ -52,6 +53,9 @@
 # Examples
 ## Cosine wave ring
 ![cosine-ring](https://user-images.githubusercontent.com/13524085/120125576-c8e70700-c18f-11eb-9021-eb1291c0665e.gif)
+
+## Radial waves
+![radial-waves](https://user-images.githubusercontent.com/13524085/120411912-041e3d00-c32c-11eb-91cb-557c7bc7bad6.gif)
 
 # Shaders
 General idea: code that runs in the GPU and can adjust to certain inputs from geometry like normals, tangents, textures, uvs, etc.
