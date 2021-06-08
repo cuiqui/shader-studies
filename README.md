@@ -3,7 +3,7 @@
 - [Index](#index)
 - [Examples](#examples)
   - [Cosine wave ring](#cosine-wave-ring)
-  - [Radial waves (naive water shader)](#radial-waves)
+  - [Radial waves](#radial-waves)
   - [Health bars](#health-bars)
     - [Plain](#plain)
     - [From texture](#from-texture)
@@ -40,6 +40,7 @@
     - [Theory](#theory)
       - [Additive](#additive)
       - [Multiply](#multiply)
+      - [Alpha blending](#alpha-blending)
     - [Blending mode code](#blending-mode-code)
   - [Depth buffer & depth testing (ZTest)](#depth-buffer--depth-testing-ztest)
     - [Tinkering with the depth buffer](#tinkering-with-the-depth-buffer)
@@ -672,6 +673,9 @@ We want to have `src * dst`. This will get us a darker color. With the parameter
 
 * `a = dst`
 * `b = 0`
+
+#### Alpha blending
+It is essentially a lerp between two colors that has the following look: `src * srcAlpha + dst * (1 - srcAlpha`. Which is exactly a lerp where `srcAlpha` is the `t` parameter. In HLSL it has the following look: `Blend SrcAlpha OneMinusSrcAlpha`.
 
 ### Blending mode code
 Blending modes are defined in the `Pass`, but they're not actually shader code but shader lab, so Unity specific (outside the HLSL code). It's just one line that defines the blending mode.
