@@ -661,6 +661,9 @@ So, in the most basic form, the way that it works is asa follow:
 
 So if we wanna change the mathematical formula that determines how something is going to blend with the background, we can modify: `a`, `b`, or the `+/-`. That's what we have to work with to achieve the desired effect that we want.
 
+* `src` is the color output of this shader.
+* `dst` is the current color in the frame buffer that we are rendering to. In other words, the background, the "existing" color.
+
 #### Additive
 With the theory in mind, let's say we want to do additive blending, which kind of just adds light. Really useful for flashy effects, like fire, etc. In order to do this, all we need to do is:
 
@@ -676,6 +679,8 @@ We want to have `src * dst`. This will get us a darker color. With the parameter
 
 #### Alpha blending
 It is essentially a lerp between two colors that has the following look: `src * srcAlpha + dst * (1 - srcAlpha`. Which is exactly a lerp where `srcAlpha` is the `t` parameter. In HLSL it has the following look: `Blend SrcAlpha OneMinusSrcAlpha`.
+
+We can do something that fades in alpha blending in the transparent queue by writing to the alpha channel in the fragment shader, for example `return float4(1, 0, 0, i.uv.x)` would give us a fading in red color with partial transparency (unlike using `clip`).
 
 ### Blending mode code
 Blending modes are defined in the `Pass`, but they're not actually shader code but shader lab, so Unity specific (outside the HLSL code). It's just one line that defines the blending mode.
