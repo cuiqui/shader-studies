@@ -52,7 +52,10 @@
 - [Vertex shader](#vertex-shader)
   - [Foundations of a water shader](#foundations-of-a-water-shader)
   - [Ripples (radial waves)](#ripples-radial-waves)
-- [Textures](#textures)
+- [SDF (signed distance fields)](#sdf-signed-distance-fields)
+  - [Distance fields](#distance-fields)
+  - [Signed distance](#signed-distance)
+    - [Rounded edges in a rectangle](#rounded-edges-in-a-rectangle)
 
 # Examples
 ## Cosine wave ring
@@ -862,4 +865,58 @@ Interpolators vert(MeshData v) {
 }
 ```
 
-# Textures
+# SDF (signed distance fields)
+## Distance fields
+Let's say we want to visualize the distance from the center of something to it's edges, and let's assume it's a square. We can remap the vertices so that the center of the square is (0,0) for the uvs, and then, just for clarity, make the edges between -1 and 1.
+
+This way, in our fragment shader we can then calculate the distance between (0,0) and the uv coordinate (which is the length of the uv coordinate in this case) and give it a color:
+
+```
+Interpolators vert (MeshData v) {
+    Interpolators o;
+    o.vertex = UnityObjectToClipPos(v.vertex);
+
+    // Now the center of the square is (0,0) and the edges are
+    // (1,1), (-1,1), (-1,-1), (1, -1)
+    o.uv = v.uv * 2 - 1;
+    return o;
+}
+
+float4 frag (Interpolators i) : SV_Target {
+    // Same as:
+    // float dist = distance(float2(0,0), i.uv);
+    float dist = length(i.uv);
+    return float4(dist.xxx, 0);
+}
+```
+This is how you generally make a **radial gradient**.
+
+## Signed distance
+Technically, distances are never negative, but we might want this to be the case. For this, we can substract some value from the distance `float dist = length(i.uv) - 0.3` for example. What this will do is that, now, the edges will be at -0.7 and 0.7, reaching 0 faster towards the center and going to -0.3 in the center itself, making a larger black circle in the center. The borders of this circle would be where distance is 0, and inside it, the distance is negative, thus the name signed distance field.
+
+A common use case for this is whenever we want something outside some boundary not to render. We can add a simple threshold check with the `step` function in this case:
+
+```
+float4 frag (Interpolators i) : SV_Target {
+    float dist = length(i.uv) - 0.3;  // SDF
+    return step(0, dist);  // a <= b
+}
+```
+Now we have a mask, we can do whatever we want. Also, there's no need for it to be radial, it can be linear for example: `float dist = i.uv.x - 0.3;`.
+
+### Rounded edges in a rectangle
+With an SDF we can clip away the pixels in a rectangle in order to give it round edges. The fundamental idea is to take the distance between any point and an imaginary line that crosses the rectangle at half its height. Inside the fragment shader:
+
+```
+// Rounding and clipping. Basically, we draw an imaginary line in the
+// center of the rectangle (at y = 0.5), then we normalize y-axis to be
+// 1 at the top, 0 at 0.5, and 1 again at the bottom. Finally, we measure
+// the distance between the pixel and its closest point to the line.
+// Since we normalized the coordinates, if the distance is greater than
+// 1, then we should clip the pixels.
+float2 coords = i.uv;
+coords.x *= 8;
+float2 pointOnLineSeg = float2(clamp(coords.x, 0.5, 7.5), 0.5);
+float sdf = distance(coords, pointOnLineSeg) * 2 - 1;
+clip(-sdf);
+```
