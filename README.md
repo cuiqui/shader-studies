@@ -56,6 +56,7 @@
   - [Distance fields](#distance-fields)
   - [Signed distance](#signed-distance)
     - [Rounded edges in a rectangle](#rounded-edges-in-a-rectangle)
+    - [Borders for a rounded rectangle (or anything where we know the SDF)](#borders-for-a-rounded-rectangle-or-anything-where-we-know-the-sdf)
 
 # Examples
 ## Cosine wave ring
@@ -919,4 +920,33 @@ coords.x *= 8;
 float2 pointOnLineSeg = float2(clamp(coords.x, 0.5, 7.5), 0.5);
 float sdf = distance(coords, pointOnLineSeg) * 2 - 1;
 clip(-sdf);
+```
+
+### Borders for a rounded rectangle (or anything where we know the SDF)
+If we know the SDF from the center of something to its edges, and let's assume that the SDF is normalized so everything greater than 1 is clipped, we can then add another mask to make a border by substracting some value from the SDF. Inside the fragment shader:
+
+```
+float4 frag (Interpolators i) : SV_Target {
+    // Rounding and clipping.
+    float2 coords = i.uv;
+    coords.x *= 8;
+    float2 pointOnLineSeg = float2(clamp(coords.x, 0.5, 7.5), 0.5);
+    float sdf = distance(coords, pointOnLineSeg) * 2 - 1;
+    clip(-sdf);
+
+    // Border mask
+    float borderSdf = sdf + _BorderSize;
+    float borderMask = step(0, -borderSdf);
+
+    float healthbarMask = _Health > i.uv.x;
+    float3 healthbarColor = tex2D(_MainTex, float2(_Health, i.uv.y));
+
+    // Ways of branching the shader to start flashing below a threshold
+    // An "if"
+    if (_Health < 0.2) {
+        float flash = cos(_Time.y * 4) * 0.4 + 1;
+        healthbarColor *= flash;
+    }
+    return float4(healthbarColor * healthbarMask * borderMask, 1);
+}
 ```
