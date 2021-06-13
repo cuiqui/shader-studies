@@ -988,9 +988,11 @@ We often have the direction to the light source, called the light vector `L`, in
 Let's think of a circle and suppose that direction `a` is the direction to the light source. We can represent that with a vector from the surface of the circle towards the light source. Now consider the normal vector of each point of the surface of the circle, there will be a point where the normal is equal to the direction of the light; in that point we want the light intensity to be 1. Now, if we traverse the circle's surface `pi / 2` and `-pi / 2` we determine a threshold where no light beyond that point should hit the object, so we determine that the light's intensity should be 0 beyond that threshold (we don't want negative values for now).
 
 In this sense, we can take advantage of the dot product between the normal vector `N` and the light vector `L`. The operation `dot(N, L)` can have three results:
-- `dot(N, L) == 0`, so, if normalized, they are the same vector.
+- `dot(N, L) == 0`, so, the angle between the vectors is exactly `pi / 2`.
 - `dot(N, L) > 0`, so the angle between the vectors is less than `pi / 2`.
 - `dot(N, L) < 0`, so the angle between the vectors is greater than `pi / 2` .
+
+The maximum value (where we want the intensity to be 1) is where the direction of `N` is equal to the direction of `L`.
 
 This way, to avoid negative values, we can just `max(0, dot(N, L))`. This is called **lambertian lighting** and is a very common and old pattern, and a model for diffuse reflections, it has nothing to do with specular lighting.
 
