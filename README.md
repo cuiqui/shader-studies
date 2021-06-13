@@ -59,6 +59,8 @@
     - [Rounded edges in a rectangle](#rounded-edges-in-a-rectangle)
     - [Borders for a rounded rectangle (or anything where we know the SDF)](#borders-for-a-rounded-rectangle-or-anything-where-we-know-the-sdf)
 - [Anti aliasing](#anti-aliasing)
+- [Lighting](#lighting)
+  - [Lambertian lighting: a model for diffuse lighting.](#lambertian-lighting-a-model-for-diffuse-lighting)
 
 # Examples
 ## Cosine wave ring
@@ -974,3 +976,72 @@ float borderMask = 1 - saturate(borderSdf / pd);
 ```
 
 Also, `fwidth` is calculating both partial derivatives and then doing an approximation of the length of the resulting vector. You can get more accuracy using the very partial derivaties with `ddx` and `ddy` as so: `float pd = length(float2(ddx(borderSdf), ddy(borderSdf)))`.
+
+# Lighting
+Usually you have two types of lightning:
+- **DIFFUSE**: where the direction you are facing doesn't really affects the object.
+- **SPECULAR**: stuff that is almost directly reflected into your eye or camera. Usually is seen as a gloss highlight, depends on the surface and on where your camera is, etc.
+
+## Lambertian lighting: a model for diffuse lighting.
+We often have the direction to the light source, called the light vector `L`, in the fragment shader. The direction to the light source is going to be the same everywhere, regardless of where we're (which fragment) we're getting it, because we interpret the light source as an infinitely far away direction light.
+
+Let's think of a circle and suppose that direction `a` is the direction to the light source. We can represent that with a vector from the surface of the circle towards the light source. Now consider the normal vector of each point of the surface of the circle, there will be a point where the normal is equal to the direction of the light; in that point we want the light intensity to be 1. Now, if we traverse the circle's surface `pi / 2` and `-pi / 2` we determine a threshold where no light beyond that point should hit the object, so we determine that the light's intensity should be 0 beyond that threshold (we don't want negative values for now).
+
+In this sense, we can take advantage of the dot product between the normal vector `N` and the light vector `L`. The operation `dot(N, L)` can have three results:
+- `dot(N, L) == 0`, so, if normalized, they are the same vector.
+- `dot(N, L) > 0`, so the angle between the vectors is less than `pi / 2`.
+- `dot(N, L) < 0`, so the angle between the vectors is greater than `pi / 2` .
+
+This way, to avoid negative values, we can just `max(0, dot(N, L))`. This is called **lambertian lighting** and is a very common and old pattern, and a model for diffuse reflections, it has nothing to do with specular lighting.
+
+We need to include some special libraries that Unity provides to handle lights:
+
+```
+#pragma vertex vert
+#pragma fragment frag
+#include "UnityCG.cginc"
+#include "Lighting.cginc"
+#include "AutoLight.cginc"
+
+sampler2D _MainTex;
+float4 _MainTex_ST;
+
+struct MeshData {
+    float4 vertex : POSITION;
+    float2 uv : TEXCOORD0;
+    float3 normal : NORMAL;
+};
+
+struct Interpolators {
+    float2 uv : TEXCOORD0;
+    float4 vertex : SV_POSITION;
+    float3 normal : TEXCOORD1;
+};
+
+Interpolators vert (MeshData v) {
+    Interpolators o;
+    o.vertex = UnityObjectToClipPos(v.vertex);
+    o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+    o.normal = UnityObjectToWorldNormal(v.normal);
+    return o;
+}
+
+float4 frag (Interpolators i) : SV_Target {
+    float3 N = i.normal;
+    float3 L = _WorldSpaceLightPos0.xyz;
+    float diffuseLight = saturate(dot(N, L));
+    return float4(diffuseLight.xxx, 1);
+}
+```
+
+This `diffuseLight` only provides the fall-off depending on the surface normal, but, perhaps we want some color. And if you want to color by some intensity you **multiply** it together, because you don't want to add more light on something that already exists, you want to combine them. Effectively, **the lambertian shading is a mask**, that we then apply to the color as follows:
+
+```
+float4 frag (Interpolators i) : SV_Target {
+    float3 N = i.normal;
+    float3 L = _WorldSpaceLightPos0.xyz;
+    float3 diffuseLight = saturate(dot(N, L)) * _LightColor0.xyz;
+    return float4(diffuseLight, 1);
+}
+```
+Now if we go to Unity's directional light, we can change the color and even the intensity, since the intensity is encoded in the color itself.
