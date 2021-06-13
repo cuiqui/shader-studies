@@ -7,6 +7,7 @@
   - [Health bars](#health-bars)
     - [Plain](#plain)
     - [From texture](#from-texture)
+    - [Using SDFs](#using-sdfs)
 - [Shaders](#shaders)
   - [Case study](#case-study)
     - [Fresnel shader](#fresnel-shader)
@@ -72,6 +73,9 @@
 
 ### From texture
 ![healthbartexture](https://user-images.githubusercontent.com/13524085/120907200-00ddc680-c636-11eb-9a8f-02c95299c483.gif)
+
+### Using SDFs
+![sdfhealthbar](https://user-images.githubusercontent.com/13524085/121790768-267c4a00-cbb9-11eb-9b29-cb36c9634cee.gif)
 
 # Shaders
 General idea: code that runs in the GPU and can adjust to certain inputs from geometry like normals, tangents, textures, uvs, etc.
