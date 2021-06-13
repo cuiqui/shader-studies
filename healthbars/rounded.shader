@@ -37,7 +37,6 @@ Shader "Unlit/SDF" {
             }
 
             float4 frag (Interpolators i) : SV_Target {
-
                 // Rounding and clipping. Basically, we draw an imaginary line in the
                 // center of the rectangle (at y = 0.5), then we normalize y-axis to be
                 // 1 at the top, 0 at 0.5, and 1 again at the bottom. Finally, we measure
@@ -50,7 +49,14 @@ Shader "Unlit/SDF" {
                 float sdf = distance(coords, pointOnLineSeg) * 2 - 1;
                 clip(-sdf);
 
-                float healhbarMask = _Health > i.uv.x;
+                // Border mask
+                float borderSdf = sdf + _BorderSize;
+
+                float pd = fwidth(borderSdf);  // screen space partial derivative
+                float borderMask = 1 - saturate(borderSdf / pd);
+                
+
+                float healthbarMask = _Health > i.uv.x;
                 float3 healthbarColor = tex2D(_MainTex, float2(_Health, i.uv.y));
 
                 // Ways of branching the shader to start flashing below a threshold
@@ -59,7 +65,7 @@ Shader "Unlit/SDF" {
                     float flash = cos(_Time.y * 4) * 0.4 + 1;
                     healthbarColor *= flash;
                 }
-                return float4(healthbarColor * healhbarMask, 1);
+                return float4(healthbarColor * healthbarMask * borderMask, 1);
             }
             ENDCG
         }

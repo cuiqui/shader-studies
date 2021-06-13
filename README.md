@@ -57,6 +57,7 @@
   - [Signed distance](#signed-distance)
     - [Rounded edges in a rectangle](#rounded-edges-in-a-rectangle)
     - [Borders for a rounded rectangle (or anything where we know the SDF)](#borders-for-a-rounded-rectangle-or-anything-where-we-know-the-sdf)
+- [Anti aliasing](#anti-aliasing)
 
 # Examples
 ## Cosine wave ring
@@ -950,3 +951,22 @@ float4 frag (Interpolators i) : SV_Target {
     return float4(healthbarColor * healthbarMask * borderMask, 1);
 }
 ```
+
+# Anti aliasing
+A really powerful thing that shaders have access to is the screen space partial derivative of any values that you have in the fragment shader, so, you have an approximation of the rate of change of whatever input value you give them.
+
+For example, if you know the rate of change of the SDF of earlier examples, you can make a little blending depending on how far away you are or how close you are. Also it is with partial derivatives how texture samplers figure out which mip levels to pick in the textures as well.
+
+Generally, you use the function `fwidth` to get an approximation of the rate of change in screen space of some value. The **cool thing** about these partial derivatives is that if you have the original field that you have as an input to the function, if you divide that by the rate of change in screen space you're going to get that gradient go from 0 to 1 across a single fragment. And *this is exactly what we want for anti aliasing*.
+
+In the above healthbar we could anti-aliase the ridge between the health bar and its border like so:
+
+```
+// Border mask
+float borderSdf = sdf + _BorderSize;
+
+float pd = fwidth(borderSdf);  // screen space partial derivative
+float borderMask = 1 - saturate(borderSdf / pd);
+```
+
+Also, `fwidth` is calculating both partial derivatives and then doing an approximation of the length of the resulting vector. You can get more accuracy using the very partial derivaties with `ddx` and `ddy` as so: `float pd = length(float2(ddx(borderSdf), ddy(borderSdf)))`.
