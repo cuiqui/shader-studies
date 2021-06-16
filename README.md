@@ -61,6 +61,11 @@
 - [Anti aliasing](#anti-aliasing)
 - [Lighting](#lighting)
   - [Lambertian lighting: a model for diffuse lighting.](#lambertian-lighting-a-model-for-diffuse-lighting)
+  - [Specular lighting](#specular-lighting)
+    - [Phong specular highlights](#phong-specular-highlights)
+    - [Blinn-Phong model](#blinn-phong-model)
+    - [Remapping `_Gloss` into an exponential curve](#remapping-_gloss-into-an-exponential-curve)
+    - [BRDF. Surface reflection: compositing diffuse and specular lighting](#brdf-surface-reflection-compositing-diffuse-and-specular-lighting)
 
 # Examples
 ## Cosine wave ring
@@ -978,6 +983,7 @@ float borderMask = 1 - saturate(borderSdf / pd);
 Also, `fwidth` is calculating both partial derivatives and then doing an approximation of the length of the resulting vector. You can get more accuracy using the very partial derivaties with `ddx` and `ddy` as so: `float pd = length(float2(ddx(borderSdf), ddy(borderSdf)))`.
 
 # Lighting
+The following are old models for lighting, now everything is physically based.
 Usually you have two types of lightning:
 - **DIFFUSE**: where the direction you are facing doesn't really affects the object.
 - **SPECULAR**: stuff that is almost directly reflected into your eye or camera. Usually is seen as a gloss highlight, depends on the surface and on where your camera is, etc.
@@ -1047,3 +1053,136 @@ float4 frag (Interpolators i) : SV_Target {
 }
 ```
 Now if we go to Unity's directional light, we can change the color and even the intensity, since the intensity is encoded in the color itself.
+
+## Specular lighting
+### Phong specular highlights
+
+We need to think of 3 things: the light vector `L`, the normal vector `N`, and the view vector `V` (from the surface to the camera). Phong model assumes a perfect reflection from the light vector on the surface, let's called the reflected light vector `R` (reflected over the normal of the mesh at that fragment). Then, the dot product between `R` and `V` measures how close we are from staring right into the reflection.
+
+The relevant equation would be: `dot(R, V)` (clamped).
+
+- The view vector `V`: we need two things, the camera position and the world space coordinate of the fragment. For the first thing there's a built-in semantic `_WorldSpaceCameraPos`, for the second, we need a new property in our `Interpolator`: `float3 wPos : TEXCOORD2;` and transform to world space the vertex position in the vertex shader: `o.wPos = mul(unity_ObjectToWorld, v.vertex);`. Then, in the fragment shader, we can calculate `V` as follows: `float3 V = normalize(_WorldSpaceCameraPos - i.wPos);`.
+
+    We can't just use the forward vector of the camera since it is the same for every fragment of the mesh.
+
+- The reflection vector `R` is easy to calculate, we can use the function: `float3 R = reflect(-L, N);`, where `N` is the normal and `L` the light vector. The light vector is negated since we need it as "incoming" onto the surface, and by default `_WorldSpaceLightPos0.xyz`, is actually a direction _towards_ the light source, so we need to invert it.
+
+Specular light usually models the _glossiness_ of the reflected light, given that the surface can be mirror-like and thus a perfect reflection, or have a los microfacets which tend to absorb some of the light. We can think of it as the roughness of the surface, or the factor of resemblance to a perfect mirror. The way to implement this is usually with exponents: `specularLight = pow(specularLight, _Gloss);`. The value `_Gloss` is usually called **specular exponent**.
+
+Putting it all together we have:
+```
+// specular lighting
+float3 N = i.normal;
+float3 L = _WorldSpaceLightPos0.xyz;
+float3 V = normalize(_WorldSpaceCameraPos - i.wPos);
+float3 R = reflect(-L, N);
+float specularLight = saturate(dot(V, R));
+specularLight = pow(specularLight, _Gloss);
+
+return float4(specularLight.xxx, 1);
+```
+
+- **CAVEAT**: we're going to see that the intensity of the colors is sharp around the vertices of the mesh and then tend to mellow down inside of the polygons, this is because the normal vectors we are getting out of the vertex shader are (in the general case) slightly shorter that the ones in the vertices themselves because they were linearly interpolated. To solve this, we just need to normalize the normals in the fragment shader: `float3 N = normalize(i.normal);`.
+
+### Blinn-Phong model
+We don't need the reflection vector, but we need a "half" vector, which is an average between the light vector `L` and the view vector `V`, it sits halfway between the two. Then, if `H` is the half vector: `float3 H = normalize(L + V)`, and the Blinn-Phong model is: `float specularLight = dot(normalize(L + V), N);`.
+
+Now, the highlight is **anisotropic**, which means that it is different on different axis, instead of uniform in all directions.
+
+### Remapping `_Gloss` into an exponential curve
+The way that `_Gloss` changes is non-linear and to get a small spotlight on the mesh you need values like >200, while in the range between 0 and 10 it takes giant steps. We want to make it feel more linear.
+
+```
+// exp2: 2 to the power of...
+// though it's probably better to do it in C# instead of real time.
+float specularExponent = exp2(_Gloss * 8) + 2;
+specularLight = pow(specularLight, specularExponent);
+```
+
+### BRDF. Surface reflection: compositing diffuse and specular lighting
+The way that it usually works is:
+- Diffuse lighting is affected by the color of the surface. `diffuseLighting * _Color;`
+- Specular lighting is **not** affected by the color of the surface unless it's a metal object.
+
+And it gets very complicated with physically based lighting.
+
+What we have set up is a very basic implementation of **BRDF: bidirectional reflectance distribution function, which means that we have some function which takes a light source input that then spreads lights in various directions, and how it spreads those lights is defined by the BRDF.
+
+Our final shader with legacy diffuse (Lambert) and specular (Blinn-Phong) lighting:
+
+```
+Shader "Unlit/Lambertian" {
+    Properties {
+        _MainTex ("Texture", 2D) = "white" {}
+        _Gloss ("Gloss", Range(0,1)) = 1
+        _Color ("Color", Color) = (1,1,1,1)
+        [Toggle] _Normalize ("Normalize normals", Float) = 1
+    }
+    SubShader {
+        Tags { "RenderType"="Opaque" }
+        LOD 100
+
+        Pass {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #include "UnityCG.cginc"
+            #include "Lighting.cginc"
+            #include "AutoLight.cginc"
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float _Gloss;
+            float _Normalize;
+            float4 _Color;
+
+            struct MeshData {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+                float3 normal : NORMAL;
+
+            };
+
+            struct Interpolators {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+                float3 normal : TEXCOORD1;
+                float3 wPos : TEXCOORD2;
+            };
+
+            Interpolators vert (MeshData v) {
+                Interpolators o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                o.normal = UnityObjectToWorldNormal(v.normal);
+                o.wPos = mul(unity_ObjectToWorld, v.vertex);
+                return o;
+            }
+
+            float4 frag (Interpolators i) : SV_Target {
+
+                // diffuse lighting
+                float3 N = i.normal;
+                if (_Normalize)
+                    N = normalize(i.normal);
+                float3 L = _WorldSpaceLightPos0.xyz;
+                float3 lambert = saturate(dot(N, L));
+                float3 diffuseLight = lambert * _LightColor0.xyz;
+
+                // specular lighting
+                float3 V = normalize(_WorldSpaceCameraPos - i.wPos);
+                float3 H = normalize(L + V);
+                //float3 R = reflect(-L, N);
+                float3 specularLight = saturate(dot(H, N)) * (lambert > 0);  // Blinn-Phong
+                float specularExponent = exp2(_Gloss * 6) + 2;
+                specularLight = pow(specularLight, specularExponent);
+                specularLight *= _LightColor0.xyz;
+
+                // adding the lights together
+                return float4(diffuseLight * _Color + specularLight, 1);
+            }
+            ENDCG
+        }
+    }
+}
+```
