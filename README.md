@@ -66,6 +66,7 @@
     - [Blinn-Phong model](#blinn-phong-model)
     - [Remapping `_Gloss` into an exponential curve](#remapping-_gloss-into-an-exponential-curve)
     - [BRDF. Surface reflection: compositing diffuse and specular lighting](#brdf-surface-reflection-compositing-diffuse-and-specular-lighting)
+- [Fresnel effect](#fresnel-effect)
 
 # Examples
 ## Cosine wave ring
@@ -1186,3 +1187,13 @@ Shader "Unlit/Lambertian" {
     }
 }
 ```
+
+# Fresnel effect
+This effect typically adds some glow around the edges, it works really well in round objects. We can mathematically interpret "glow around the edges" as when the normals start facing away from you. Suppose `V` is the view vector and `N` the normal vector, then `dot(V, N)` is the Fresnel effect. If we want the glow around the edges: `1 - dot(V, N)`. We can even give it a color, let's define a color `_Glow`, then, if we integrate it in BRDF:
+
+```
+float fresnel = 1 - dot(V, N);
+return float4(diffuseLight * _Color + specularLight + fresnel * _Glow, 1);
+```
+
+We just add it to the combo.
